@@ -1,0 +1,22 @@
+# Web Framework
+Flask==3.0.0
+Flask-CORS==4.0.0
+
+# Notion API Client
+notion-client==2.2.1
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# HTTP Requests
+requests==2.31.0
+
+# Testing
+pytest==7.4.3
+pytest-cov==4.1.0
+
+# Database (optional)
+SQLAlchemy==2.0.23
+
+# Utilities
+python-dateutil==2.8.2

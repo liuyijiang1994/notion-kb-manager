@@ -18,7 +18,9 @@ def ping():
 # Import and register route modules
 from app.api.config_routes import config_bp
 from app.api.link_routes import link_bp, task_bp
+from app.api.parsing_routes import parsing_bp
 
 api_bp.register_blueprint(config_bp)
 api_bp.register_blueprint(link_bp)
 api_bp.register_blueprint(task_bp)
+api_bp.register_blueprint(parsing_bp)

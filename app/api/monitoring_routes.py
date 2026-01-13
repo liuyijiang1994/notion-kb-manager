@@ -1,9 +1,12 @@
 """
 Monitoring API routes for background workers and queues
 """
-from flask import Blueprint
+from flask import Blueprint, Response
 from app.services.background_task_service import get_background_task_service
 from app.utils.response import success_response, error_response
+from app.utils.monitoring import get_metrics, collect_all_metrics
+from app.utils.health_check import get_health_checker
+from app.middleware.rate_limiter import exempt_from_rate_limit
 from config.workers import WorkerConfig
 from redis.exceptions import ConnectionError as RedisConnectionError
 import logging
@@ -140,7 +143,7 @@ def get_queues():
                 'oldest_job_timestamp': oldest_job_timestamp
             }
 
-        return success_response(data={'queues': queue_stats})
+        return success_response(data={'queues': list(queue_stats.values())})
 
     except RedisConnectionError as e:
         logger.error(f"Redis connection error: {e}")
@@ -372,3 +375,167 @@ def get_health():
     except Exception as e:
         logger.error(f"Failed to get health: {e}", exc_info=True)
         return error_response('SYS_001', f'Failed to get health: {str(e)}', None, 500)
+
+
+@monitoring_bp.route('/metrics', methods=['GET'])
+@exempt_from_rate_limit()
+def prometheus_metrics():
+    """
+    Prometheus metrics endpoint
+
+    Returns metrics in Prometheus text format for scraping
+
+    Response (200):
+        Plain text Prometheus metrics format
+
+    Metrics exposed:
+    - API request count, duration, size
+    - Task execution metrics
+    - Queue metrics (size, failed jobs, worker count)
+    - Database connection pool metrics
+    - Redis metrics (connections, memory)
+    - System metrics (CPU, memory, disk)
+
+    Example usage:
+        curl http://localhost:5000/api/monitoring/metrics
+
+    Prometheus scrape config:
+        scrape_configs:
+          - job_name: 'notion-kb-manager'
+            static_configs:
+              - targets: ['localhost:5000']
+            metrics_path: '/api/monitoring/metrics'
+            scrape_interval: 15s
+    """
+    try:
+        # Collect fresh metrics
+        collect_all_metrics()
+
+        # Get metrics in Prometheus format
+        metrics_data, content_type = get_metrics()
+
+        return Response(metrics_data, mimetype=content_type)
+
+    except Exception as e:
+        logger.error(f"Failed to generate metrics: {e}", exc_info=True)
+        return Response(f"# Error generating metrics: {str(e)}\n", mimetype='text/plain'), 500
+
+
+@monitoring_bp.route('/health/detailed', methods=['GET'])
+@exempt_from_rate_limit()
+def health_detailed():
+    """
+    Comprehensive health check endpoint
+
+    Returns detailed health status for all components:
+    - Database (connection, response time, pool stats)
+    - Redis (connection, memory, clients)
+    - Workers (count, status by queue)
+    - Queues (pending, failed jobs)
+    - System resources (CPU, memory, disk)
+
+    Response (200):
+        {
+            "status": "healthy|degraded|unhealthy",
+            "timestamp": "2026-01-13T10:00:00Z",
+            "version": "1.0",
+            "environment": "production",
+            "uptime_seconds": 86400,
+            "components": {
+                "database": { ... },
+                "redis": { ... },
+                "workers": { ... },
+                "queues": { ... },
+                "disk": { ... },
+                "memory": { ... },
+                "cpu": { ... }
+            }
+        }
+
+    Status Codes:
+        200: Health check completed
+        503: Service unavailable (critical components down)
+    """
+    try:
+        checker = get_health_checker()
+        health = checker.check_all()
+
+        # Return 503 if unhealthy
+        status_code = 200 if health['status'] != 'unhealthy' else 503
+
+        return success_response(data=health), status_code
+
+    except Exception as e:
+        logger.error(f"Detailed health check failed: {e}", exc_info=True)
+        return error_response('SYS_001', f'Health check failed: {str(e)}', None, 500)
+
+
+@monitoring_bp.route('/health/ready', methods=['GET'])
+@exempt_from_rate_limit()
+def health_ready():
+    """
+    Kubernetes/Docker readiness probe endpoint
+
+    Checks if service is ready to accept traffic.
+    Use this for load balancer health checks.
+
+    Checks:
+    - Database connection
+    - Redis connection
+    - Workers running
+
+    Response (200):
+        {
+            "ready": true,
+            "checks": {
+                "database": true,
+                "redis": true,
+                "workers": true
+            }
+        }
+
+    Status Codes:
+        200: Service ready
+        503: Service not ready
+    """
+    try:
+        checker = get_health_checker()
+        is_ready, details = checker.check_ready()
+
+        status_code = 200 if is_ready else 503
+
+        return success_response(data=details), status_code
+
+    except Exception as e:
+        logger.error(f"Readiness check failed: {e}", exc_info=True)
+        return success_response(data={'ready': False, 'error': str(e)}), 503
+
+
+@monitoring_bp.route('/health/alive', methods=['GET'])
+@exempt_from_rate_limit()
+def health_alive():
+    """
+    Kubernetes/Docker liveness probe endpoint
+
+    Simple check that process is alive and responding.
+    Use this for container orchestration liveness checks.
+
+    Response (200):
+        {
+            "alive": true,
+            "timestamp": "2026-01-13T10:00:00Z"
+        }
+
+    Status Codes:
+        200: Always (if responding)
+    """
+    try:
+        checker = get_health_checker()
+        alive_status = checker.check_alive()
+
+        return success_response(data=alive_status), 200
+
+    except Exception as e:
+        logger.error(f"Liveness check failed: {e}", exc_info=True)
+        # Still return 200 if we can respond at all
+        return success_response(data={'alive': True, 'error': str(e)}), 200

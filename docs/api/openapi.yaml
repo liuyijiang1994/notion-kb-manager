@@ -1,0 +1,1246 @@
+openapi: 3.0.3
+info:
+  title: Notion KB Manager API
+  description: |
+    Production-ready API for managing knowledge base content with Notion integration.
+
+    ## Features
+    - 🔗 Link management and validation
+    - 📄 Content parsing and extraction
+    - 🤖 AI-powered content processing
+    - 📝 Notion database integration
+    - 💾 Backup and restore
+    - ⚙️ Configuration management
+    - 📊 Task monitoring and reporting
+
+    ## Authentication
+    Most endpoints require JWT authentication. Include your token in the `Authorization` header:
+    ```
+    Authorization: Bearer <your_token>
+    ```
+
+    To obtain a token, use the `/api/auth/login` endpoint with valid credentials.
+
+    ## Rate Limiting
+    API requests are rate-limited to prevent abuse:
+    - Default: 1000 requests/hour, 100 requests/minute
+    - Config endpoints: 100 requests/hour
+    - Parsing: 10 requests/minute
+    - AI processing: 20 requests/minute
+    - Backups: 5 requests/hour
+
+    Rate limit headers are included in responses:
+    - `X-RateLimit-Limit`: Request limit
+    - `X-RateLimit-Remaining`: Remaining requests
+    - `X-RateLimit-Reset`: Reset timestamp
+
+  version: 1.0.0
+  contact:
+    name: Notion KB Manager Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000/api
+    description: Development server
+  - url: https://staging-api.example.com/api
+    description: Staging server
+  - url: https://api.example.com/api
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and token management
+  - name: Links
+    description: Link import, validation, and management
+  - name: Parsing
+    description: Content parsing and extraction
+  - name: AI Processing
+    description: AI-powered content analysis
+  - name: Notion
+    description: Notion database integration
+  - name: Content
+    description: Content search and management
+  - name: Backup
+    description: Backup and restore operations
+  - name: Configuration
+    description: System configuration management
+  - name: Tasks
+    description: Task monitoring and reporting
+  - name: Monitoring
+    description: Health checks and metrics
+  - name: Help
+    description: Help documentation and feedback
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ==================== Authentication ====================
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      description: Authenticate user and receive JWT access and refresh tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+                  example: admin123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                        description: JWT access token (1 hour validity)
+                      refresh_token:
+                        type: string
+                        description: JWT refresh token (30 days validity)
+                      token_type:
+                        type: string
+                        example: Bearer
+                      expires_in:
+                        type: integer
+                        description: Token expiration in seconds
+                        example: 3600
+                      user:
+                        type: object
+                        properties:
+                          user_id:
+                            type: string
+                          roles:
+                            type: array
+                            items:
+                              type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Refresh access token
+      description: Get new access token using refresh token
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                      token_type:
+                        type: string
+                      expires_in:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user info
+      description: Retrieve information about the authenticated user
+      responses:
+        '200':
+          description: User information retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      user_id:
+                        type: string
+                      roles:
+                        type: array
+                        items:
+                          type: string
+                      is_admin:
+                        type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: User logout
+      description: Logout user (client should discard tokens)
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ==================== Links ====================
+  /links/import:
+    post:
+      tags: [Links]
+      summary: Import links
+      description: Import multiple links from various sources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [links]
+              properties:
+                links:
+                  type: array
+                  items:
+                    type: object
+                    required: [url]
+                    properties:
+                      url:
+                        type: string
+                        format: uri
+                      title:
+                        type: string
+            example:
+              links:
+                - url: https://example.com/article1
+                  title: Example Article 1
+                - url: https://example.com/article2
+                  title: Example Article 2
+      responses:
+        '200':
+          description: Links imported successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      imported_count:
+                        type: integer
+                      link_ids:
+                        type: array
+                        items:
+                          type: integer
+                      skipped_count:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /links/:
+    get:
+      tags: [Links]
+      summary: List links
+      description: Get paginated list of imported links
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: source
+          in: query
+          schema:
+            type: string
+            enum: [manual, file, rss, bookmark, api]
+        - name: validation_status
+          in: query
+          schema:
+            type: string
+            enum: [valid, invalid, pending]
+      responses:
+        '200':
+          description: Links retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+
+  /links/{link_id}:
+    get:
+      tags: [Links]
+      summary: Get link details
+      parameters:
+        - $ref: '#/components/parameters/LinkId'
+      responses:
+        '200':
+          description: Link details retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Link'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Links]
+      summary: Delete link
+      parameters:
+        - $ref: '#/components/parameters/LinkId'
+      responses:
+        '200':
+          description: Link deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== Parsing ====================
+  /parsing/async:
+    post:
+      tags: [Parsing]
+      summary: Parse content asynchronously
+      description: Queue links for background parsing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [link_ids]
+              properties:
+                link_ids:
+                  type: array
+                  items:
+                    type: integer
+                name:
+                  type: string
+                  description: Optional task name
+      responses:
+        '200':
+          description: Parsing task queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      task_id:
+                        type: integer
+                      status:
+                        type: string
+                        enum: [pending, queued, running]
+                      queued_count:
+                        type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  # ==================== AI Processing ====================
+  /ai/process:
+    post:
+      tags: [AI Processing]
+      summary: Process content with AI
+      description: Analyze parsed content using AI models
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [parsed_content_ids]
+              properties:
+                parsed_content_ids:
+                  type: array
+                  items:
+                    type: integer
+                model_id:
+                  type: integer
+                  description: Optional AI model to use
+      responses:
+        '200':
+          description: AI processing initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  # ==================== Notion Import ====================
+  /notion/import:
+    post:
+      tags: [Notion]
+      summary: Import to Notion
+      description: Import AI-processed content to Notion database
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ai_content_ids, database_id]
+              properties:
+                ai_content_ids:
+                  type: array
+                  items:
+                    type: integer
+                database_id:
+                  type: string
+                  description: Notion database ID
+      responses:
+        '200':
+          description: Content imported to Notion
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      imported_count:
+                        type: integer
+                      page_ids:
+                        type: array
+                        items:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== Content Management ====================
+  /content/local:
+    get:
+      tags: [Content]
+      summary: Search local content
+      description: Search parsed and AI-processed content
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: sentiment
+          in: query
+          schema:
+            type: string
+            enum: [positive, negative, neutral]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Content search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+
+  # ==================== Backup & Restore ====================
+  /backup/:
+    post:
+      tags: [Backup]
+      summary: Create backup
+      description: Create database and file backup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [manual, auto]
+                  default: manual
+                include_database:
+                  type: boolean
+                  default: true
+                include_files:
+                  type: boolean
+                  default: true
+                retention_days:
+                  type: integer
+      responses:
+        '200':
+          description: Backup created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      backup_id:
+                        type: integer
+                      filename:
+                        type: string
+                      size:
+                        type: integer
+                        description: Backup size in bytes
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+    get:
+      tags: [Backup]
+      summary: List backups
+      description: Get list of available backups
+      responses:
+        '200':
+          description: Backup list retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Backup'
+
+  /backup/{backup_id}:
+    get:
+      tags: [Backup]
+      summary: Get backup details
+      parameters:
+        - $ref: '#/components/parameters/BackupId'
+      responses:
+        '200':
+          description: Backup details retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Backup'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Backup]
+      summary: Delete backup
+      parameters:
+        - $ref: '#/components/parameters/BackupId'
+      responses:
+        '200':
+          description: Backup deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /backup/{backup_id}/restore:
+    post:
+      tags: [Backup]
+      summary: Restore from backup
+      description: Restore database and files from backup
+      parameters:
+        - $ref: '#/components/parameters/BackupId'
+      responses:
+        '200':
+          description: Backup restored successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  # ==================== Configuration ====================
+  /config/models:
+    get:
+      tags: [Configuration]
+      summary: List AI models
+      description: Get list of configured AI models
+      responses:
+        '200':
+          description: AI models retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AIModel'
+
+    post:
+      tags: [Configuration]
+      summary: Create AI model
+      description: Add new AI model configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIModelCreate'
+      responses:
+        '200':
+          description: AI model created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/AIModel'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /config/models/{model_id}:
+    put:
+      tags: [Configuration]
+      summary: Update AI model
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIModelCreate'
+      responses:
+        '200':
+          description: AI model updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Configuration]
+      summary: Delete AI model
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: AI model deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== Task Management ====================
+  /tasks/pending:
+    get:
+      tags: [Tasks]
+      summary: List pending tasks
+      description: Get list of pending and queued tasks
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: task_type
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pending tasks retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+
+  /tasks/pending/{task_id}:
+    get:
+      tags: [Tasks]
+      summary: Get pending task details
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Task details retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Task'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Tasks]
+      summary: Edit pending task
+      description: Update task name or configuration
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                config:
+                  type: object
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Tasks]
+      summary: Delete pending task
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Task deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks/history:
+    get:
+      tags: [Tasks]
+      summary: List historical tasks
+      description: Get list of completed and failed tasks
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [completed, failed]
+      responses:
+        '200':
+          description: Historical tasks retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+
+  /tasks/history/{task_id}/rerun:
+    post:
+      tags: [Tasks]
+      summary: Clone and rerun task
+      description: Clone completed/failed task for re-execution
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Optional new task name
+      responses:
+        '200':
+          description: Task cloned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      task_id:
+                        type: integer
+                      status:
+                        type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks/history/{task_id}/export:
+    post:
+      tags: [Tasks]
+      summary: Export task report
+      description: Generate Excel or JSON report for task execution
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                format:
+                  type: string
+                  enum: [excel, json]
+                  default: excel
+      responses:
+        '200':
+          description: Report generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      report_path:
+                        type: string
+                      download_url:
+                        type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== Monitoring ====================
+  /ping:
+    get:
+      tags: [Monitoring]
+      summary: Health check
+      description: Simple health check endpoint
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: pong
+
+  /health:
+    get:
+      tags: [Monitoring]
+      summary: Detailed health check
+      description: Comprehensive health status including dependencies
+      security: []
+      responses:
+        '200':
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded, unhealthy]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  version:
+                    type: string
+                  components:
+                    type: object
+                    properties:
+                      database:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          response_time_ms:
+                            type: number
+                      redis:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                          response_time_ms:
+                            type: number
+
+# ==================== Components ====================
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /api/auth/login
+
+  parameters:
+    LinkId:
+      name: link_id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Link ID
+
+    BackupId:
+      name: backup_id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Backup ID
+
+    TaskId:
+      name: task_id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Task ID
+
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: string
+
+    PaginatedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+        pagination:
+          type: object
+          properties:
+            page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+            pages:
+              type: integer
+
+    Link:
+      type: object
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+          format: uri
+        title:
+          type: string
+        source:
+          type: string
+          enum: [manual, file, rss, bookmark, api]
+        validation_status:
+          type: string
+          enum: [valid, invalid, pending]
+        imported_at:
+          type: string
+          format: date-time
+
+    Backup:
+      type: object
+      properties:
+        id:
+          type: integer
+        filename:
+          type: string
+        type:
+          type: string
+          enum: [manual, auto]
+        size:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        retention_days:
+          type: integer
+
+    AIModel:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        api_url:
+          type: string
+          format: uri
+        model_name:
+          type: string
+        max_tokens:
+          type: integer
+        temperature:
+          type: number
+        is_default:
+          type: boolean
+
+    AIModelCreate:
+      type: object
+      required: [name, api_url, api_token, model_name, max_tokens, temperature]
+      properties:
+        name:
+          type: string
+        api_url:
+          type: string
+          format: uri
+        api_token:
+          type: string
+        model_name:
+          type: string
+        max_tokens:
+          type: integer
+          minimum: 1
+          maximum: 32000
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+        is_default:
+          type: boolean
+          default: false
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        task_type:
+          type: string
+        status:
+          type: string
+          enum: [pending, queued, running, completed, failed]
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        error_message:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: REQ_002
+              message: Missing required fields
+              details: Field 'url' is required
+
+    Unauthorized:
+      description: Unauthorized - invalid or missing authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: AUTH_001
+              message: Authorization required
+              details: Please provide a valid access token
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: RES_001
+              message: Resource not found
+              details: Link with ID 123 not found
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: RATE_001
+              message: Rate limit exceeded
+              details: Too many requests. Please try again later.
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: SYS_001
+              message: Internal server error
+              details: An unexpected error occurred

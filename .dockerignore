@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/*.md
+docs/PHASE_*.md
+docs/ASYNC_*.md
+docs/DEPLOYMENT_GUIDE.md
+docs/CONFIGURATION_GUIDE.md
+docs/PROJECT_SUMMARY.md
+# Keep docs/api/ for OpenAPI spec
+!docs/api/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Logs and data
+logs/
+*.log
+data/*.db
+backups/
+
+# Environment
+.env
+.env.*
+
+# Mac
+.DS_Store
+
+# Testing
+tests/
+*.test.js
+*.spec.js

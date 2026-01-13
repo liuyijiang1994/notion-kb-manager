@@ -5,6 +5,8 @@ from flask import Blueprint, request, send_file
 from app.services.backup_service import get_backup_service
 from app.utils.response import success_response, error_response
 from app.utils.validators import validate_required
+from app.middleware.auth import require_auth
+from app.middleware.rate_limiter import backup_rate_limit
 import logging
 from pathlib import Path
 
@@ -14,6 +16,8 @@ backup_bp = Blueprint('backup', __name__, url_prefix='/backup')
 
 
 @backup_bp.route('/', methods=['POST'])
+@require_auth()
+@backup_rate_limit()
 def create_backup():
     """
     Create a new backup
@@ -190,6 +194,7 @@ def download_backup(backup_id):
 
 
 @backup_bp.route('/<int:backup_id>/restore', methods=['POST'])
+@require_auth()
 def restore_backup(backup_id):
     """
     Restore from backup
@@ -242,6 +247,7 @@ def restore_backup(backup_id):
 
 
 @backup_bp.route('/<int:backup_id>', methods=['DELETE'])
+@require_auth()
 def delete_backup(backup_id):
     """
     Delete backup
@@ -275,6 +281,7 @@ def delete_backup(backup_id):
 
 
 @backup_bp.route('/cleanup', methods=['POST'])
+@require_auth()
 def cleanup_expired():
     """
     Cleanup expired backups

@@ -9,6 +9,8 @@ from app.services.notion_service import get_notion_service
 from app.utils.response import success_response, error_response, paginated_response
 from app.utils.exceptions import NotFoundError, ValidationError, DatabaseError, ExternalAPIError
 from app.utils.validators import validate_required, validate_url, validate_range, validate_choice
+from app.middleware.auth import require_auth
+from app.middleware.rate_limiter import config_rate_limit
 import logging
 
 logger = logging.getLogger(__name__)
@@ -82,6 +84,8 @@ def get_model_config(model_id):
 
 
 @config_bp.route('/models', methods=['POST'])
+@require_auth()
+@config_rate_limit()
 def create_model_config():
     """Create new model configuration"""
     try:
@@ -138,6 +142,8 @@ def create_model_config():
 
 
 @config_bp.route('/models/<int:model_id>', methods=['PUT'])
+@require_auth()
+@config_rate_limit()
 def update_model_config(model_id):
     """Update model configuration"""
     try:
@@ -185,6 +191,7 @@ def update_model_config(model_id):
 
 
 @config_bp.route('/models/<int:model_id>', methods=['DELETE'])
+@require_auth()
 def delete_model_config(model_id):
     """Delete model configuration"""
     try:
@@ -283,6 +290,8 @@ def get_notion_config():
 
 
 @config_bp.route('/notion', methods=['POST'])
+@require_auth()
+@config_rate_limit()
 def create_or_update_notion_config():
     """Create or update Notion configuration"""
     try:
@@ -388,6 +397,8 @@ def get_tool_parameters():
 
 
 @config_bp.route('/parameters', methods=['PUT'])
+@require_auth()
+@config_rate_limit()
 def update_tool_parameters():
     """Update tool parameters"""
     try:
@@ -494,6 +505,8 @@ def get_user_preferences():
 
 
 @config_bp.route('/preferences', methods=['PUT'])
+@require_auth()
+@config_rate_limit()
 def update_user_preferences():
     """Update user preferences"""
     try:

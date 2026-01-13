@@ -39,6 +39,8 @@ ENV/
 .env
 .env.local
 .env.*.local
+.env.docker
+.env.docker.local
 
 # Testing
 .pytest_cache/
@@ -47,9 +49,11 @@ htmlcov/
 .tox/
 .hypothesis/
 
-# Logs
+# Logs and Runtime Data
 *.log
 logs/
+backups/
+reports/
 
 # Database
 *.db

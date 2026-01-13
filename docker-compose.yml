@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  # Frontend - React app
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kb-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - kb-network
+
+  # Backend - Flask API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: kb-backend
+    ports:
+      - "5001:5000"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://kbuser:kbpass123@postgres:5432/notion_kb
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-change-in-production-min-32-chars
+      - JWT_SECRET_KEY=dev-jwt-secret-change-in-production-min-32
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
+      - NOTION_API_KEY=${NOTION_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - REQUIRE_AUTH=false
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5001
+      - PROMETHEUS_ENABLED=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - kb-network
+    volumes:
+      - ./logs:/app/logs
+      - ./backups:/app/backups
+
+  # Workers - Parsing queue
+  worker-parsing:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: kb-worker-parsing
+    environment:
+      - DATABASE_URL=postgresql://kbuser:kbpass123@postgres:5432/notion_kb
+      - REDIS_URL=redis://redis:6379/0
+      - NOTION_API_KEY=${NOTION_API_KEY:-your-notion-api-key}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-api-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - kb-network
+    command: python scripts/start_workers.py --queue parsing --workers 3
+
+  # Workers - AI queue
+  worker-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: kb-worker-ai
+    environment:
+      - DATABASE_URL=postgresql://kbuser:kbpass123@postgres:5432/notion_kb
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-api-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - kb-network
+    command: python scripts/start_workers.py --queue ai --workers 2
+
+  # Workers - Notion queue
+  worker-notion:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: kb-worker-notion
+    environment:
+      - DATABASE_URL=postgresql://kbuser:kbpass123@postgres:5432/notion_kb
+      - REDIS_URL=redis://redis:6379/0
+      - NOTION_API_KEY=${NOTION_API_KEY:-your-notion-api-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - kb-network
+    command: python scripts/start_workers.py --queue notion --workers 2
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: kb-postgres
+    environment:
+      - POSTGRES_USER=kbuser
+      - POSTGRES_PASSWORD=kbpass123
+      - POSTGRES_DB=notion_kb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - kb-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kbuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: kb-redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - kb-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  kb-network:
+    driver: bridge

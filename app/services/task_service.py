@@ -1,5 +1,6 @@
 """Task management service for import and processing tasks"""
 import logging
+import copy
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from app.models.link import ImportTask, Link
@@ -195,6 +196,121 @@ class TaskService:
             db.session.rollback()
             logger.error(f"Failed to update task {task_id} progress: {e}")
             raise
+
+    def update_task(self, task_id: int, name: Optional[str] = None,
+                   config: Optional[Dict[str, Any]] = None) -> bool:
+        """
+        Update pending task configuration
+
+        Args:
+            task_id: Task ID
+            name: New task name (optional)
+            config: Updated configuration (optional)
+
+        Returns:
+            True if updated, False if task not found or not pending
+        """
+        try:
+            task = db.session.query(ImportTask).get(task_id)
+
+            if not task:
+                logger.warning(f"Task {task_id} not found")
+                return False
+
+            # Only allow editing pending tasks
+            if task.status != 'pending':
+                logger.warning(f"Cannot edit task {task_id} with status {task.status}")
+                return False
+
+            # Update fields
+            if name is not None:
+                task.name = name
+                logger.info(f"Updated task {task_id} name to: {name}")
+
+            if config is not None:
+                task.config = config
+                logger.info(f"Updated task {task_id} config")
+
+            db.session.commit()
+            return True
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Failed to update task {task_id}: {e}", exc_info=True)
+            raise
+
+    def clone_task(self, task_id: int, new_name: Optional[str] = None,
+                  config_overrides: Optional[Dict[str, Any]] = None) -> Optional[ImportTask]:
+        """
+        Clone a completed task to create a new pending task
+
+        Args:
+            task_id: Original task ID
+            new_name: Name for cloned task (optional)
+            config_overrides: Override specific config values (optional)
+
+        Returns:
+            New ImportTask or None if original not found
+        """
+        try:
+            original = self.get_task(task_id)
+
+            if not original:
+                logger.warning(f"Cannot clone task {task_id}: not found")
+                return None
+
+            # Generate name
+            if new_name is None:
+                timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+                new_name = f"{original.name} (Clone {timestamp})"
+
+            # Clone config
+            new_config = copy.deepcopy(original.config) if original.config else {}
+
+            # Apply overrides
+            if config_overrides:
+                new_config.update(config_overrides)
+
+            # Create new task
+            new_task = ImportTask(
+                name=new_name,
+                status='pending',
+                total_links=0,
+                processed_links=0,
+                config=new_config
+            )
+
+            db.session.add(new_task)
+            db.session.commit()
+
+            logger.info(f"Cloned task {task_id} to new task {new_task.id}")
+            return new_task
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Failed to clone task {task_id}: {e}", exc_info=True)
+            raise
+
+    def get_tasks_by_status_list(self, statuses: List[str],
+                                 limit: Optional[int] = None) -> List[ImportTask]:
+        """
+        Get tasks filtered by multiple statuses
+
+        Args:
+            statuses: List of status strings
+            limit: Maximum number of tasks
+
+        Returns:
+            List of ImportTask objects
+        """
+        query = db.session.query(ImportTask).filter(
+            ImportTask.status.in_(statuses)
+        ).order_by(ImportTask.created_at.desc())
+
+        if limit:
+            query = query.limit(limit)
+
+        return query.all()
 
     def delete_task(self, task_id: int, delete_links: bool = False) -> bool:
         """

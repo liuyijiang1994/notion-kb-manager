@@ -42,6 +42,18 @@ def create_app(config_name='development'):
     db.init_app(app)
     CORS(app, origins=app.config['CORS_ORIGINS'])
 
+    # Initialize rate limiter
+    from app.middleware.rate_limiter import init_rate_limiter
+    init_rate_limiter(app)
+
+    # Initialize security headers
+    from app.middleware.security_headers import init_security_headers
+    init_security_headers(app)
+
+    # Initialize JWT authentication
+    from app.middleware.auth import init_auth
+    init_auth(app)
+
     # Setup logging
     from app.services.logging_service import setup_logging
     setup_logging(app)
@@ -55,6 +67,18 @@ def create_app(config_name='development'):
 
     # Register blueprints
     _register_blueprints(app)
+
+    # Initialize API documentation
+    from app.api.docs_routes import init_api_docs
+    init_api_docs(app)
+
+    # Initialize performance monitoring
+    from app.utils.monitoring import init_monitoring, start_metrics_collector
+    init_monitoring(app)
+
+    # Start background metrics collection (every 15 seconds)
+    if config_name == 'production':
+        start_metrics_collector(interval=15)
 
     # Create database tables (development only)
     with app.app_context():

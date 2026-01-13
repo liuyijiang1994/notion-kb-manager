@@ -28,7 +28,10 @@ from app.api.content_management_routes import content_management_bp
 from app.api.backup_routes import backup_bp
 from app.api.log_routes import log_bp
 from app.api.help_routes import help_bp, feedback_bp
+from app.api.task_management_routes import task_mgmt_bp
+from app.api.auth_routes import auth_bp
 
+api_bp.register_blueprint(auth_bp)
 api_bp.register_blueprint(config_bp)
 api_bp.register_blueprint(link_bp)
 api_bp.register_blueprint(task_bp)
@@ -44,3 +47,4 @@ api_bp.register_blueprint(backup_bp)
 api_bp.register_blueprint(log_bp)
 api_bp.register_blueprint(help_bp)
 api_bp.register_blueprint(feedback_bp)
+api_bp.register_blueprint(task_mgmt_bp)

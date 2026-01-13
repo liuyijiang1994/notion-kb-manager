@@ -1,7 +1,23 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "Bash(ls:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(open -a Docker)",
+      "Bash(for:*)",
+      "Bash(do if docker info)",
+      "Bash(then echo 'Docker is ready!' docker info)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(open http://localhost:3000)",
+      "Bash(open:*)",
+      "Bash(grep:*)",
+      "Bash(git add:*)"
     ]
   }
 }

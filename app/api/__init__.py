@@ -24,6 +24,10 @@ from app.api.ai_routes import ai_bp, notion_import_bp
 from app.api.async_ai_routes import async_ai_bp
 from app.api.async_notion_routes import async_notion_bp
 from app.api.monitoring_routes import monitoring_bp
+from app.api.content_management_routes import content_management_bp
+from app.api.backup_routes import backup_bp
+from app.api.log_routes import log_bp
+from app.api.help_routes import help_bp, feedback_bp
 
 api_bp.register_blueprint(config_bp)
 api_bp.register_blueprint(link_bp)
@@ -35,3 +39,8 @@ api_bp.register_blueprint(notion_import_bp)
 api_bp.register_blueprint(async_ai_bp)
 api_bp.register_blueprint(async_notion_bp)
 api_bp.register_blueprint(monitoring_bp)
+api_bp.register_blueprint(content_management_bp)
+api_bp.register_blueprint(backup_bp)
+api_bp.register_blueprint(log_bp)
+api_bp.register_blueprint(help_bp)
+api_bp.register_blueprint(feedback_bp)

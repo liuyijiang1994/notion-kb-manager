@@ -10,7 +10,7 @@ from app.models.configuration import (
     UserPreferences
 )
 from app.models.link import ImportTask, Link
-from app.models.content import ParsedContent, AIProcessedContent, ProcessingTask
+from app.models.content import ParsedContent, AIProcessedContent, ProcessingTask, TaskItem
 from app.models.notion import NotionMapping, NotionImport, ImportNotionTask
 from app.models.system import Backup, BackupFiles, OperationLog, Feedback
 
@@ -25,6 +25,7 @@ __all__ = [
     'ParsedContent',
     'AIProcessedContent',
     'ProcessingTask',
+    'TaskItem',
     'NotionMapping',
     'NotionImport',
     'ImportNotionTask',

@@ -73,6 +73,14 @@ class ImportNotionTask(Base):
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
+    # Background task fields (Phase 5)
+    job_id: Mapped[Optional[str]] = mapped_column(String(255))  # RQ job ID
+    queue_name: Mapped[Optional[str]] = mapped_column(String(50))  # Queue name
+    worker_id: Mapped[Optional[str]] = mapped_column(String(100))  # Worker ID
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    max_retries: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
+    result_data: Mapped[Optional[dict]] = mapped_column(JSON)  # Result storage
+
     __table_args__ = (
         {'sqlite_autoincrement': True},
     )

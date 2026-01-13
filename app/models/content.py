@@ -5,7 +5,7 @@ from sqlalchemy import Integer, String, Text, DateTime, JSON, ForeignKey, Numeri
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from typing import Optional, List, TYPE_CHECKING
-from app.models.base import Base
+from app.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.link import Link
@@ -93,9 +93,41 @@ class ProcessingTask(Base):
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
+    # Background task fields (Phase 5)
+    job_id: Mapped[Optional[str]] = mapped_column(String(255))  # RQ job ID
+    queue_name: Mapped[Optional[str]] = mapped_column(String(50))  # Queue name
+    worker_id: Mapped[Optional[str]] = mapped_column(String(100))  # Worker ID
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    max_retries: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
+    result_data: Mapped[Optional[dict]] = mapped_column(JSON)  # Result storage
+
     __table_args__ = (
         {'sqlite_autoincrement': True},
     )
 
     def __repr__(self):
         return f"<ProcessingTask(id={self.id}, type='{self.type}', status='{self.status}')>"
+
+
+class TaskItem(Base, TimestampMixin):
+    """Individual item within a batch task"""
+    __tablename__ = 'task_item'
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    task_id: Mapped[int] = mapped_column(Integer, ForeignKey('processing_task.id', ondelete='CASCADE'), nullable=False)
+    item_id: Mapped[int] = mapped_column(Integer, nullable=False)  # link_id, parsed_content_id, or ai_content_id
+    item_type: Mapped[str] = mapped_column(String(50), nullable=False)  # 'link', 'parsed_content', 'ai_content'
+    status: Mapped[str] = mapped_column(String(50), default='pending', nullable=False)  # 'pending', 'running', 'completed', 'failed'
+    job_id: Mapped[Optional[str]] = mapped_column(String(255))  # RQ job ID for this item
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    error_message: Mapped[Optional[str]] = mapped_column(Text)
+    result_data: Mapped[Optional[dict]] = mapped_column(JSON)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    __table_args__ = (
+        {'sqlite_autoincrement': True},
+    )
+
+    def __repr__(self):
+        return f"<TaskItem(id={self.id}, task_id={self.task_id}, item_id={self.item_id}, status='{self.status}')>"

@@ -19,11 +19,19 @@ def ping():
 from app.api.config_routes import config_bp
 from app.api.link_routes import link_bp, task_bp
 from app.api.parsing_routes import parsing_bp
+from app.api.async_parsing_routes import async_parsing_bp
 from app.api.ai_routes import ai_bp, notion_import_bp
+from app.api.async_ai_routes import async_ai_bp
+from app.api.async_notion_routes import async_notion_bp
+from app.api.monitoring_routes import monitoring_bp
 
 api_bp.register_blueprint(config_bp)
 api_bp.register_blueprint(link_bp)
 api_bp.register_blueprint(task_bp)
 api_bp.register_blueprint(parsing_bp)
+api_bp.register_blueprint(async_parsing_bp)
 api_bp.register_blueprint(ai_bp)
 api_bp.register_blueprint(notion_import_bp)
+api_bp.register_blueprint(async_ai_bp)
+api_bp.register_blueprint(async_notion_bp)
+api_bp.register_blueprint(monitoring_bp)

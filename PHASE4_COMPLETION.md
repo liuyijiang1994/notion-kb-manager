@@ -1,4 +1,4 @@
-# Phase 4: AI Processing and Notion Export - Completion Report
+# Phase 4: AI Processing and Notion Import - Completion Report
 
 **Date:** 2026-01-13
 **Status:** ✅ Completed
@@ -7,12 +7,12 @@
 
 ## Executive Summary
 
-Phase 4 successfully implements AI-powered content processing and Notion database integration. The phase delivers two core services with 13 REST API endpoints, enabling automated content summarization, keyword extraction, insight generation, and seamless export to Notion workspaces.
+Phase 4 successfully implements AI-powered content processing and Notion database integration. The phase delivers two core services with 13 REST API endpoints, enabling automated content summarization, keyword extraction, insight generation, and seamless import into Notion workspaces.
 
 **Key Achievements:**
 - ✅ AIProcessingService for content enhancement with AI models
-- ✅ NotionExportService for database integration and page creation
-- ✅ 13 REST API endpoints (7 AI processing, 6 Notion export)
+- ✅ NotionImportService for database integration and page creation
+- ✅ 13 REST API endpoints (7 AI processing, 6 Notion import)
 - ✅ Version management for AI-processed content
 - ✅ Markdown-to-Notion block conversion
 - ✅ Comprehensive statistics and tracking
@@ -29,8 +29,8 @@ $ python3 -m pytest tests/test_ai_processing.py -v
 
 ✅ TestAIProcessingService::test_get_service_singleton
 ✅ TestAIProcessingService::test_get_processing_statistics
-✅ TestNotionExportService::test_get_service_singleton
-✅ TestNotionExportService::test_get_export_statistics
+✅ TestNotionImportService::test_get_service_singleton
+✅ TestNotionImportService::test_get_import_statistics
 ```
 
 ### Overall System Tests
@@ -100,21 +100,21 @@ get_processing_statistics()
 
 ---
 
-### 2. Notion Export Service
+### 2. Notion Import Service
 
-**Location:** `app/services/notion_export_service.py` (460 lines)
+**Location:** `app/services/notion_import_service.py` (460 lines)
 
 **Core Capabilities:**
 - **Page Creation:** Creates rich pages in Notion databases
 - **Block Conversion:** Converts markdown to Notion blocks
 - **Property Mapping:** Maps content metadata to Notion properties
-- **Batch Export:** Export multiple AI contents to Notion
-- **Import Tracking:** Records all exports with URLs and status
+- **Batch Import:** Import multiple AI contents into Notion
+- **Import Tracking:** Records all imports with URLs and status
 
 **Key Methods:**
 ```python
-export_to_notion(ai_content_id, database_id, properties=None)
-  → Export AI-processed content to Notion database
+import_to_notion(ai_content_id, database_id, properties=None)
+  → Import AI-processed content into Notion database
   → Returns page ID, URL, and import record ID
 
 _prepare_properties(parsed_content, ai_content, custom_properties)
@@ -139,11 +139,11 @@ _markdown_to_notion_blocks(markdown)
     - Bullet lists: - text or * text
     - Paragraphs: regular text (max 2000 chars)
 
-batch_export(ai_content_ids, database_id)
-  → Export multiple contents with progress tracking
+batch_import(ai_content_ids, database_id)
+  → Import multiple contents with progress tracking
 
-get_export_statistics()
-  → Total exports, completed, failed counts
+get_import_statistics()
+  → Total imports, completed, failed counts
 ```
 
 **Notion Block Types Supported:**
@@ -317,15 +317,15 @@ Response (200):
 
 ---
 
-### 4. Notion Export API
+### 4. Notion Import API
 
-**Location:** `app/api/ai_routes.py` (Blueprint: `notion_export_bp`)
+**Location:** `app/api/ai_routes.py` (Blueprint: `notion_import_bp`)
 
 #### Endpoints
 
-**4.1 Export to Notion**
+**4.1 Import into Notion**
 ```http
-POST /api/notion-export/<ai_content_id>
+POST /api/notion-import/<ai_content_id>
 
 Request Body:
 {
@@ -346,13 +346,13 @@ Response (201):
     "notion_url": "https://notion.so/page-xyz789",
     "notion_import_id": 8
   },
-  "message": "Successfully exported AI content 5 to Notion"
+  "message": "Successfully imported AI content 5 to Notion"
 }
 ```
 
-**4.2 Batch Export**
+**4.2 Batch Import**
 ```http
-POST /api/notion-export/batch
+POST /api/notion-import/batch
 
 Request Body:
 {
@@ -378,13 +378,13 @@ Response (201):
       ...
     ]
   },
-  "message": "Batch export completed: 3/3 successful"
+  "message": "Batch import completed: 3/3 successful"
 }
 ```
 
 **4.3 Get Import Record**
 ```http
-GET /api/notion-export/import/<import_id>
+GET /api/notion-import/import/<import_id>
 
 Response (200):
 {
@@ -403,7 +403,7 @@ Response (200):
 
 **4.4 Get Imports by AI Content**
 ```http
-GET /api/notion-export/by-ai-content/<ai_content_id>
+GET /api/notion-import/by-ai-content/<ai_content_id>
 
 Response (200):
 {
@@ -424,15 +424,15 @@ Response (200):
 }
 ```
 
-**4.5 Get Export Statistics**
+**4.5 Get Import Statistics**
 ```http
-GET /api/notion-export/statistics
+GET /api/notion-import/statistics
 
 Response (200):
 {
   "success": true,
   "data": {
-    "total_exports": 25,
+    "total_imports": 25,
     "completed": 23,
     "failed": 2
   }
@@ -450,24 +450,24 @@ Response (200):
   - AIProcessingService class with AI integration
   - get_ai_processing_service() factory function
 
-- `app/services/notion_export_service.py` (460 lines)
-  - NotionExportService class with Notion API integration
-  - get_notion_export_service() factory function
+- `app/services/notion_import_service.py` (460 lines)
+  - NotionImportService class with Notion API integration
+  - get_notion_import_service() factory function
 
 **API Routes:**
 - `app/api/ai_routes.py` (370 lines)
   - ai_bp blueprint with 7 endpoints
-  - notion_export_bp blueprint with 6 endpoints
+  - notion_import_bp blueprint with 6 endpoints
 
 **Tests:**
 - `tests/test_ai_processing.py` (49 lines)
   - TestAIProcessingService class (2 tests)
-  - TestNotionExportService class (2 tests)
+  - TestNotionImportService class (2 tests)
 
 ### Modified Files
 
 - `app/api/__init__.py`
-  - Imported ai_bp and notion_export_bp
+  - Imported ai_bp and notion_import_bp
   - Registered both blueprints with main API blueprint
 
 ---
@@ -523,7 +523,7 @@ updated_at: DateTime
 ### 3. ParsedContent Integration (Phase 3)
 - Reads parsed content from ContentParsingService
 - Accesses formatted_content (markdown) for AI processing
-- Uses quality_score and metadata in Notion export
+- Uses quality_score and metadata in Notion import
 
 ### 4. Link Integration (Phase 2)
 - Retrieves original link metadata (title, URL)
@@ -582,14 +582,14 @@ for item in result['results']:
         print(f"✗ Content {item['parsed_content_id']}: {item['error']}")
 ```
 
-### Example 3: Export to Notion
+### Example 3: Import into Notion
 
 ```python
-from app.services.notion_export_service import get_notion_export_service
+from app.services.notion_import_service import get_notion_import_service
 
-service = get_notion_export_service()
+service = get_notion_import_service()
 
-result = service.export_to_notion(
+result = service.import_to_notion(
     ai_content_id=5,
     database_id='abc123...',
     properties={
@@ -606,17 +606,17 @@ print(f"Notion Page: {result['notion_url']}")
 print(f"Import ID: {result['notion_import_id']}")
 ```
 
-### Example 4: Batch Export to Notion
+### Example 4: Batch Import into Notion
 
 ```python
-service = get_notion_export_service()
+service = get_notion_import_service()
 
-result = service.batch_export(
+result = service.batch_import(
     ai_content_ids=[5, 6, 7, 8],
     database_id='abc123...'
 )
 
-print(f"Exported: {result['completed']}/{result['total']}")
+print(f"Imported: {result['completed']}/{result['total']}")
 for item in result['results']:
     if item['success']:
         print(f"✓ {item['notion_url']}")
@@ -663,8 +663,8 @@ curl -X POST http://localhost:5000/api/ai/process/3 \
     }
   }'
 
-# Export to Notion
-curl -X POST http://localhost:5000/api/notion-export/5 \
+# Import into Notion
+curl -X POST http://localhost:5000/api/notion-import/5 \
   -H "Content-Type: application/json" \
   -d '{
     "database_id": "abc123...",
@@ -677,7 +677,7 @@ curl -X POST http://localhost:5000/api/notion-export/5 \
 
 # Get statistics
 curl http://localhost:5000/api/ai/statistics
-curl http://localhost:5000/api/notion-export/statistics
+curl http://localhost:5000/api/notion-import/statistics
 ```
 
 ---
@@ -717,7 +717,7 @@ curl http://localhost:5000/api/notion-export/statistics
    - Set as active version
    - Track tokens and costs
 
-### Notion Export Flow
+### Notion Import Flow
 
 1. **Retrieve AI Content**
    - Query AIProcessedContent by ID
@@ -761,7 +761,7 @@ curl http://localhost:5000/api/notion-export/statistics
 - AI API failures → Log error, return with success: false
 - Network timeouts → Handled by ModelService with timeout parameter
 
-**Notion Export Errors:**
+**Notion Import Errors:**
 - Missing AI content → 400 error
 - No Notion configuration → 400 error
 - Invalid database ID → 400 error from Notion API
@@ -778,10 +778,10 @@ curl http://localhost:5000/api/notion-export/statistics
 - Batch processing sequential (future: parallel with rate limiting)
 - Database commits after each processing
 
-### Notion Export
+### Notion Import
 - Block limits prevent API payload issues (100 blocks max)
 - Paragraph truncation prevents content overflow (2000 chars)
-- Batch export sequential (future: parallel with rate limiting)
+- Batch import sequential (future: parallel with rate limiting)
 - 30-second timeout per API call
 
 ### Optimization Opportunities
@@ -834,8 +834,8 @@ Phase 4 uses only existing dependencies:
 - `VAL_001`: Validation error (missing fields, invalid data)
 - `SYS_001`: System error (unexpected exceptions)
 
-### Notion Export
-- `NOTION_001`: Export failed (generic)
+### Notion Import
+- `NOTION_001`: Import failed (generic)
 - `RES_001`: Resource not found (AI content, import record)
 - `VAL_001`: Validation error (missing fields, invalid data)
 - `SYS_001`: System error (unexpected exceptions)
@@ -850,7 +850,7 @@ Phase 4 uses only existing dependencies:
 - [ ] Support for custom Notion block types (code, images, embeds)
 - [ ] Automatic retry on transient failures
 - [ ] Webhook notifications for batch completion
-- [ ] Export templates for different Notion database schemas
+- [ ] Import templates for different Notion database schemas
 - [ ] AI model comparison (process same content with multiple models)
 - [ ] Cost optimization (select model based on content length)
 - [ ] Content translation support
@@ -860,7 +860,7 @@ Phase 4 uses only existing dependencies:
 
 ## Conclusion
 
-Phase 4 successfully completes the AI processing and Notion export functionality, delivering:
+Phase 4 successfully completes the AI processing and Notion import functionality, delivering:
 
 ✅ **2 Core Services** with comprehensive AI and Notion integration
 ✅ **13 REST API Endpoints** for programmatic access
@@ -869,7 +869,7 @@ Phase 4 successfully completes the AI processing and Notion export functionality
 ✅ **Production-Ready Code** with error handling and validation
 ✅ **Seamless Integration** with Phases 1-3
 
-The system can now fetch web content, parse it, process it with AI, and export it to Notion databases—completing the full content pipeline from URL to knowledge base.
+The system can now fetch web content, parse it, process it with AI, and import it into Notion databases—completing the full content pipeline from URL to knowledge base.
 
 ---
 

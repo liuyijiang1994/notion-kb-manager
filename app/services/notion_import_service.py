@@ -1,4 +1,4 @@
-"""Notion export service for pushing content to Notion databases"""
+"""Notion import service for importing content into Notion databases"""
 import logging
 from typing import Dict, Any, Optional, List
 from datetime import datetime
@@ -11,26 +11,26 @@ from app import db
 logger = logging.getLogger(__name__)
 
 
-class NotionExportService:
-    """Service for exporting content to Notion"""
+class NotionImportService:
+    """Service for importing content into Notion"""
 
     def __init__(self):
         self.notion_service = get_notion_service()
         self.config_service = ConfigurationService()
 
-    def export_to_notion(self, ai_content_id: int,
+    def import_to_notion(self, ai_content_id: int,
                         database_id: str,
                         properties: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Export AI processed content to Notion database
+        Import AI processed content into Notion database
 
         Args:
-            ai_content_id: AIProcessedContent ID to export
+            ai_content_id: AIProcessedContent ID to import
             database_id: Target Notion database ID
             properties: Additional properties for the Notion page
 
         Returns:
-            Dict with export result
+            Dict with import result
         """
         try:
             # Get AI processed content
@@ -85,7 +85,7 @@ class NotionExportService:
                 notion_url=result['url']
             )
 
-            logger.info(f"Successfully exported AI content {ai_content_id} to Notion")
+            logger.info(f"Successfully imported AI content {ai_content_id} into Notion")
 
             return {
                 'success': True,
@@ -95,7 +95,7 @@ class NotionExportService:
             }
 
         except Exception as e:
-            logger.error(f"Failed to export AI content {ai_content_id}: {e}", exc_info=True)
+            logger.error(f"Failed to import AI content {ai_content_id}: {e}", exc_info=True)
             return {
                 'success': False,
                 'error': str(e)
@@ -447,10 +447,10 @@ class NotionExportService:
             ai_content_id=ai_content_id
         ).all()
 
-    def batch_export(self, ai_content_ids: List[int],
+    def batch_import(self, ai_content_ids: List[int],
                     database_id: str) -> Dict[str, Any]:
         """
-        Export multiple AI contents to Notion in batch
+        Import multiple AI contents into Notion in batch
 
         Args:
             ai_content_ids: List of AIProcessedContent IDs
@@ -468,7 +468,7 @@ class NotionExportService:
         }
 
         for content_id in ai_content_ids:
-            result = self.export_to_notion(content_id, database_id)
+            result = self.import_to_notion(content_id, database_id)
             if result['success']:
                 results['completed'] += 1
             else:
@@ -480,9 +480,9 @@ class NotionExportService:
 
         return results
 
-    def get_export_statistics(self) -> Dict[str, Any]:
+    def get_import_statistics(self) -> Dict[str, Any]:
         """
-        Get Notion export statistics
+        Get Notion import statistics
 
         Returns:
             Dict with statistics
@@ -492,12 +492,12 @@ class NotionExportService:
         failed = db.session.query(NotionImport).filter_by(status='failed').count()
 
         return {
-            'total_exports': total,
+            'total_imports': total,
             'completed': completed,
             'failed': failed
         }
 
 
-def get_notion_export_service() -> NotionExportService:
-    """Get singleton instance of NotionExportService"""
-    return NotionExportService()
+def get_notion_import_service() -> NotionImportService:
+    """Get singleton instance of NotionImportService"""
+    return NotionImportService()

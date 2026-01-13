@@ -1,7 +1,7 @@
-"""AI processing and Notion export API routes"""
+"""AI processing and Notion import API routes"""
 from flask import Blueprint, request
 from app.services.ai_processing_service import get_ai_processing_service
-from app.services.notion_export_service import get_notion_export_service
+from app.services.notion_import_service import get_notion_import_service
 from app.utils.response import success_response, error_response
 from app.utils.validators import validate_required
 import logging
@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 ai_bp = Blueprint('ai', __name__, url_prefix='/ai')
-notion_export_bp = Blueprint('notion_export', __name__, url_prefix='/notion-export')
+notion_import_bp = Blueprint('notion_import', __name__, url_prefix='/notion-import')
 
 
 # ==================== AI Processing Endpoints ====================
@@ -223,15 +223,15 @@ def get_ai_statistics():
         return error_response('SYS_001', f"Failed to retrieve statistics: {str(e)}", None, 500)
 
 
-# ==================== Notion Export Endpoints ====================
+# ==================== Notion Import Endpoints ====================
 
-@notion_export_bp.route('/<int:ai_content_id>', methods=['POST'])
-def export_to_notion(ai_content_id):
+@notion_import_bp.route('/<int:ai_content_id>', methods=['POST'])
+def import_to_notion(ai_content_id):
     """
-    Export AI processed content to Notion
+    Import AI processed content into Notion
 
     Path Parameters:
-        ai_content_id: AIProcessedContent ID to export
+        ai_content_id: AIProcessedContent ID to import
 
     Request Body:
         - database_id: Target Notion database ID
@@ -244,33 +244,33 @@ def export_to_notion(ai_content_id):
         database_id = data['database_id']
         properties = data.get('properties', {})
 
-        export_service = get_notion_export_service()
-        result = export_service.export_to_notion(
+        import_service = get_notion_import_service()
+        result = import_service.import_to_notion(
             ai_content_id=ai_content_id,
             database_id=database_id,
             properties=properties
         )
 
         if not result['success']:
-            return error_response('NOTION_001', result.get('error', 'Export failed'), None, 400)
+            return error_response('NOTION_001', result.get('error', 'Import failed'), None, 400)
 
         return success_response(
             data=result,
-            message=f"Successfully exported AI content {ai_content_id} to Notion",
+            message=f"Successfully imported AI content {ai_content_id} into Notion",
             status=201
         )
 
     except ValueError as e:
         return error_response('VAL_001', str(e), None, 400)
     except Exception as e:
-        logger.error(f"Failed to export AI content {ai_content_id}: {e}", exc_info=True)
-        return error_response('SYS_001', f"Export failed: {str(e)}", None, 500)
+        logger.error(f"Failed to import AI content {ai_content_id}: {e}", exc_info=True)
+        return error_response('SYS_001', f"Import failed: {str(e)}", None, 500)
 
 
-@notion_export_bp.route('/batch', methods=['POST'])
-def batch_export_to_notion():
+@notion_import_bp.route('/batch', methods=['POST'])
+def batch_import_to_notion():
     """
-    Export multiple AI contents to Notion in batch
+    Import multiple AI contents into Notion in batch
 
     Request Body:
         - ai_content_ids: Array of AIProcessedContent IDs
@@ -286,26 +286,26 @@ def batch_export_to_notion():
 
         database_id = data['database_id']
 
-        export_service = get_notion_export_service()
-        result = export_service.batch_export(
+        import_service = get_notion_import_service()
+        result = import_service.batch_import(
             ai_content_ids=ai_content_ids,
             database_id=database_id
         )
 
         return success_response(
             data=result,
-            message=f"Batch export completed: {result['completed']}/{result['total']} successful",
+            message=f"Batch import completed: {result['completed']}/{result['total']} successful",
             status=201
         )
 
     except ValueError as e:
         return error_response('VAL_001', str(e), None, 400)
     except Exception as e:
-        logger.error(f"Batch export failed: {e}", exc_info=True)
-        return error_response('SYS_001', f"Batch export failed: {str(e)}", None, 500)
+        logger.error(f"Batch import failed: {e}", exc_info=True)
+        return error_response('SYS_001', f"Batch import failed: {str(e)}", None, 500)
 
 
-@notion_export_bp.route('/import/<int:import_id>', methods=['GET'])
+@notion_import_bp.route('/import/<int:import_id>', methods=['GET'])
 def get_notion_import(import_id):
     """
     Get Notion import record by ID
@@ -314,8 +314,8 @@ def get_notion_import(import_id):
         import_id: NotionImport ID
     """
     try:
-        export_service = get_notion_export_service()
-        notion_import = export_service.get_notion_import(import_id)
+        import_service = get_notion_import_service()
+        notion_import = import_service.get_notion_import(import_id)
 
         if not notion_import:
             return error_response('RES_001', f"Notion import {import_id} not found", None, 404)
@@ -337,7 +337,7 @@ def get_notion_import(import_id):
         return error_response('SYS_001', f"Failed to retrieve import: {str(e)}", None, 500)
 
 
-@notion_export_bp.route('/by-ai-content/<int:ai_content_id>', methods=['GET'])
+@notion_import_bp.route('/by-ai-content/<int:ai_content_id>', methods=['GET'])
 def get_imports_by_ai_content(ai_content_id):
     """
     Get all Notion imports for an AI content
@@ -346,8 +346,8 @@ def get_imports_by_ai_content(ai_content_id):
         ai_content_id: AIProcessedContent ID
     """
     try:
-        export_service = get_notion_export_service()
-        imports = export_service.get_imports_by_ai_content(ai_content_id)
+        import_service = get_notion_import_service()
+        imports = import_service.get_imports_by_ai_content(ai_content_id)
 
         return success_response(
             data={
@@ -370,17 +370,17 @@ def get_imports_by_ai_content(ai_content_id):
         return error_response('SYS_001', f"Failed to retrieve imports: {str(e)}", None, 500)
 
 
-@notion_export_bp.route('/statistics', methods=['GET'])
-def get_export_statistics():
+@notion_import_bp.route('/statistics', methods=['GET'])
+def get_import_statistics():
     """
-    Get Notion export statistics
+    Get Notion import statistics
     """
     try:
-        export_service = get_notion_export_service()
-        stats = export_service.get_export_statistics()
+        import_service = get_notion_import_service()
+        stats = import_service.get_import_statistics()
 
         return success_response(data=stats)
 
     except Exception as e:
-        logger.error(f"Failed to get export statistics: {e}", exc_info=True)
+        logger.error(f"Failed to get import statistics: {e}", exc_info=True)
         return error_response('SYS_001', f"Failed to retrieve statistics: {str(e)}", None, 500)

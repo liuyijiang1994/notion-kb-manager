@@ -1,16 +1,17 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ListTodo, Settings, Database } from 'lucide-react';
+import { LayoutDashboard, ListTodo, Settings, Database, Upload } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
   { name: 'Tasks', to: '/tasks', icon: ListTodo },
+  { name: 'Import', to: '/import', icon: Upload },
   { name: 'Content', to: '/content', icon: Database },
   { name: 'Settings', to: '/settings', icon: Settings },
 ];
 
 export const Sidebar = () => {
   return (
-    <aside className="w-64 bg-gray-900 text-white">
+    <aside className="w-64 bg-gray-900 text-white flex flex-col h-screen">
       <div className="p-6">
         <div className="flex items-center gap-2">
           <Database className="h-8 w-8 text-blue-400" />
@@ -18,7 +19,7 @@ export const Sidebar = () => {
         </div>
       </div>
 
-      <nav className="px-3 mt-6">
+      <nav className="px-3 mt-6 flex-1">
         <ul className="space-y-1">
           {navigation.map((item) => (
             <li key={item.name}>
@@ -40,7 +41,7 @@ export const Sidebar = () => {
         </ul>
       </nav>
 
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-800">
+      <div className="p-4 border-t border-gray-800 mt-auto">
         <div className="text-xs text-gray-400 text-center">
           <p>Version 1.0.0</p>
           <p className="mt-1">Production Ready</p>

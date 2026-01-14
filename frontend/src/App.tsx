@@ -4,6 +4,8 @@ import { Layout } from './components/layout/Layout';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { TasksPage } from './pages/TasksPage';
+import { ImportPage } from './pages/ImportPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 
@@ -31,9 +33,10 @@ function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/import" element={<ImportPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               {/* Placeholder routes for sidebar links */}
               <Route path="/content" element={<div className="text-center p-12"><h2 className="text-2xl font-bold text-gray-700">Content Browser</h2><p className="text-gray-500 mt-2">Coming soon...</p></div>} />
-              <Route path="/settings" element={<div className="text-center p-12"><h2 className="text-2xl font-bold text-gray-700">Settings</h2><p className="text-gray-500 mt-2">Coming soon...</p></div>} />
             </Route>
           </Route>
 

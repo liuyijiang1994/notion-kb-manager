@@ -119,7 +119,13 @@ export const TaskTable = ({ tasks }: TaskTableProps) => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}
+                  {task.created_at
+                    ? formatDistanceToNow(new Date(task.created_at), { addSuffix: true })
+                    : task.started_at
+                    ? formatDistanceToNow(new Date(task.started_at), { addSuffix: true })
+                    : task.completed_at
+                    ? formatDistanceToNow(new Date(task.completed_at), { addSuffix: true })
+                    : 'N/A'}
                 </td>
               </tr>
             ))}

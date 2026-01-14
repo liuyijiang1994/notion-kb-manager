@@ -166,3 +166,42 @@ export interface User {
   roles: string[];
   is_admin: boolean;
 }
+
+// Import types
+export interface ImportTask {
+  id: number;
+  url?: string;
+  status: 'pending' | 'completed' | 'failed';
+  created_at: string;
+  completed_at?: string;
+  total_links: number;
+  processed_links: number;
+}
+
+export interface Bookmark {
+  url: string;
+  title: string;
+}
+
+// Configuration types for settings
+export interface Config {
+  notion_api_key?: string;
+  openai_api_key?: string;
+  openai_model?: string;
+  temperature?: number;
+  max_tokens?: number;
+  quality_threshold?: number;
+  batch_size?: number;
+  auto_export?: boolean;
+  retry_attempts?: number;
+  timeout?: number;
+}
+
+// Workflow types
+export interface WorkflowResponse {
+  import_task_id: number;
+  parsing_job_id?: string;
+  ai_job_id?: string;
+  notion_job_id?: string;
+  status: string;
+}

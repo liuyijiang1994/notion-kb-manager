@@ -9,13 +9,13 @@ export const tasksApi = {
     status?: string;
     type?: string;
     page?: number;
-    limit?: number;
-  }): Promise<Task[]> => {
-    const response = await apiClient.get<never, ApiResponse<{ tasks: Task[] }>>(
+    per_page?: number;
+  }): Promise<{ tasks: Task[]; pagination: { page: number; per_page: number; total: number; pages: number } }> => {
+    const response = await apiClient.get<never, ApiResponse<{ tasks: Task[]; pagination: any }>>(
       '/tasks/history',
       { params }
     );
-    return response.data!.tasks;
+    return response.data!;
   },
 
   /**

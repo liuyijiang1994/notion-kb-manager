@@ -13,8 +13,9 @@ API_BASE_URL = "http://localhost:5001/api"
 USERNAME = "admin"
 PASSWORD = "admin123"
 
-# Test URL - a public article
-TEST_URL = "https://www.iana.org/help/example-domains"
+# Test URL - use timestamp to ensure uniqueness
+import random
+TEST_URL = f"https://httpbin.org/uuid?test={int(time.time())}&r={random.randint(1000, 9999)}"
 
 def print_section(title):
     """Print a formatted section header"""
@@ -134,18 +135,32 @@ def get_all_tasks(token):
 
     headers = {"Authorization": f"Bearer {token}"}
 
-    response = requests.get(
-        f"{API_BASE_URL}/tasks",
+    # Get both pending and historical tasks
+    pending_response = requests.get(
+        f"{API_BASE_URL}/tasks/pending?page=1&per_page=50",
         headers=headers
     )
 
-    if response.status_code == 200:
-        data = response.json()
-        tasks = data.get('data', {}).get('items', [])
+    history_response = requests.get(
+        f"{API_BASE_URL}/tasks/history?page=1&per_page=50",
+        headers=headers
+    )
 
-        print(f"📋 Total tasks: {len(tasks)}")
+    tasks = []
 
-        for task in tasks:
+    if pending_response.status_code == 200:
+        pending_data = pending_response.json()
+        tasks.extend(pending_data.get('data', {}).get('tasks', []))
+
+    if history_response.status_code == 200:
+        history_data = history_response.json()
+        tasks.extend(history_data.get('data', {}).get('tasks', []))
+
+    if tasks:
+
+        print(f"📋 Total tasks: {len(tasks)} (pending + history)")
+
+        for task in tasks[:10]:  # Show max 10 tasks
             status_emoji = {
                 'pending': '⏳',
                 'queued': '🔵',
@@ -159,13 +174,13 @@ def get_all_tasks(token):
             print(f"   Status: {task['status']}")
             print(f"   Progress: {task['progress']}%")
             print(f"   Items: {task['completed_items']}/{task['total_items']}")
-            if task['error_log']:
+            if task.get('error_log'):
                 print(f"   Errors: {task['error_log']}")
 
-        return tasks
     else:
-        print(f"❌ Failed to get tasks: {response.text}")
-        return []
+        print(f"⚠️  No tasks found")
+
+    return tasks
 
 def monitor_task(token, task_id, timeout=60):
     """Monitor a task until completion or timeout"""

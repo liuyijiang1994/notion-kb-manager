@@ -3,11 +3,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, Loader, AlertCircle } from 'lucide-react';
 import { configApi } from '../../api/config';
 import { PasswordInput } from '../common/PasswordInput';
+import { FormInput } from '../common/FormInput';
 
 export const ApiTokensSection = () => {
   const queryClient = useQueryClient();
   const [notionKey, setNotionKey] = useState('');
-  const [openaiKey, setOpenaiKey] = useState('');
+  const [apiKey, setApiKey] = useState('');
+  const [apiBaseUrl, setApiBaseUrl] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [testResult, setTestResult] = useState<{
     type: 'notion' | 'openai';
@@ -25,7 +27,8 @@ export const ApiTokensSection = () => {
   useEffect(() => {
     if (config && !hasChanges) {
       setNotionKey(config.notion_api_key || '');
-      setOpenaiKey(config.openai_api_key || '');
+      setApiKey(config.openai_api_key || '');
+      setApiBaseUrl(config.openai_base_url || '');
     }
   }, [config, hasChanges]);
 
@@ -34,7 +37,8 @@ export const ApiTokensSection = () => {
     mutationFn: () =>
       configApi.updateConfig({
         notion_api_key: notionKey || undefined,
-        openai_api_key: openaiKey || undefined,
+        openai_api_key: apiKey || undefined,
+        openai_base_url: apiBaseUrl || undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['config'] });
@@ -44,15 +48,19 @@ export const ApiTokensSection = () => {
 
   // Test Notion connection
   const testNotionMutation = useMutation({
-    mutationFn: configApi.testNotionConnection,
+    mutationFn: async () => {
+      // Save config first, then test
+      await configApi.updateConfig({ notion_api_key: notionKey });
+      return await configApi.testNotionConnection();
+    },
     onSuccess: (data) => {
       setTestResult({ type: 'notion', ...data });
     },
-    onError: () => {
+    onError: (err: any) => {
       setTestResult({
         type: 'notion',
         success: false,
-        message: 'Failed to test connection',
+        message: err.response?.data?.error?.message || 'Failed to test connection',
       });
     },
   });
@@ -78,8 +86,14 @@ export const ApiTokensSection = () => {
     setTestResult(null);
   };
 
-  const handleOpenaiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setOpenaiKey(e.target.value);
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setApiKey(e.target.value);
+    setHasChanges(true);
+    setTestResult(null);
+  };
+
+  const handleApiBaseUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setApiBaseUrl(e.target.value);
     setHasChanges(true);
     setTestResult(null);
   };
@@ -121,21 +135,33 @@ export const ApiTokensSection = () => {
         </button>
       </div>
 
-      {/* OpenAI API Key */}
+      {/* AI API Base URL */}
+      <div>
+        <FormInput
+          label="AI API Base URL"
+          name="api_base_url"
+          value={apiBaseUrl}
+          onChange={handleApiBaseUrlChange}
+          placeholder="https://ark.cn-beijing.volces.com/api/v3"
+          disabled={saveMutation.isPending}
+        />
+      </div>
+
+      {/* AI API Key */}
       <div>
         <PasswordInput
-          label="OpenAI API Key"
-          name="openai_key"
-          value={openaiKey}
-          onChange={handleOpenaiKeyChange}
-          placeholder="sk-..."
-          helperText="Get your OpenAI API key from https://platform.openai.com/api-keys"
+          label="AI API Key"
+          name="api_key"
+          value={apiKey}
+          onChange={handleApiKeyChange}
+          placeholder="Enter your AI API key"
+          helperText="API key for your AI service (OpenAI, Volcengine, etc.)"
           disabled={saveMutation.isPending}
         />
         <button
           type="button"
           onClick={() => testOpenAIMutation.mutate()}
-          disabled={!openaiKey || testOpenAIMutation.isPending || saveMutation.isPending}
+          disabled={!apiKey || testOpenAIMutation.isPending || saveMutation.isPending}
           className="mt-2 px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {testOpenAIMutation.isPending && <Loader className="h-4 w-4 animate-spin" />}
@@ -214,7 +240,7 @@ export const ApiTokensSection = () => {
             ) : (
               <span className="text-gray-400">not set</span>
             )}
-            , OpenAI{' '}
+            , AI API{' '}
             {config.openai_api_key ? (
               <span className="text-green-600 font-medium">configured</span>
             ) : (

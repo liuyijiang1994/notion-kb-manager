@@ -12,10 +12,10 @@ class WorkerConfig:
     REDIS_DB = 0
 
     # Queue names
-    QUEUE_NAMES = ['parsing-queue', 'ai-queue', 'notion-queue', 'default']
-    PARSING_QUEUE = 'parsing-queue'
-    AI_QUEUE = 'ai-queue'
-    NOTION_QUEUE = 'notion-queue'
+    QUEUE_NAMES = ['parsing', 'ai', 'notion', 'default']
+    PARSING_QUEUE = 'parsing'
+    AI_QUEUE = 'ai'
+    NOTION_QUEUE = 'notion'
     DEFAULT_QUEUE = 'default'
 
     # Job timeouts (seconds)

@@ -33,8 +33,15 @@ def get_pending_tasks():
         # Get ImportTask (pending status)
         import_tasks = task_service.get_all_tasks(status='pending', limit=1000)
 
+        # Get ProcessingTasks (pending/queued status)
+        from app.models.content import ProcessingTask
+        from app import db
+        processing_tasks = db.session.query(ProcessingTask).filter(
+            ProcessingTask.status.in_(['pending', 'queued'])
+        ).order_by(ProcessingTask.id.desc()).limit(1000).all()
+
         # Combine and filter
-        all_tasks = _combine_tasks(import_tasks, [], task_type)
+        all_tasks = _combine_tasks(import_tasks, processing_tasks, task_type)
 
         # Manual pagination
         total = len(all_tasks)
@@ -170,7 +177,7 @@ def get_historical_tasks():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         task_type = request.args.get('type')
-        status = request.args.get('status', 'completed,failed')
+        status = request.args.get('status', 'completed,failed,running,queued')
 
         statuses = [s.strip() for s in status.split(',')]
 
@@ -179,8 +186,15 @@ def get_historical_tasks():
         # Get ImportTask with multiple statuses
         import_tasks = task_service.get_tasks_by_status_list(statuses, limit=1000)
 
+        # Get ProcessingTasks
+        from app.models.content import ProcessingTask
+        from app import db
+        processing_tasks = db.session.query(ProcessingTask).filter(
+            ProcessingTask.status.in_(statuses)
+        ).order_by(ProcessingTask.started_at.desc().nullslast()).limit(1000).all()
+
         # Combine and filter
-        all_tasks = _combine_tasks(import_tasks, [], task_type)
+        all_tasks = _combine_tasks(import_tasks, processing_tasks, task_type)
 
         # Manual pagination
         total = len(all_tasks)
@@ -355,6 +369,9 @@ def _combine_tasks(import_tasks, processing_tasks, filter_type):
         if filter_type and filter_type != 'import':
             continue
 
+        total_links = task.total_links or 0
+        processed_links = task.processed_links or 0
+
         combined.append({
             'id': task.id,
             'name': task.name,
@@ -364,32 +381,48 @@ def _combine_tasks(import_tasks, processing_tasks, filter_type):
             'started_at': task.started_at.isoformat() if task.started_at else None,
             'completed_at': task.completed_at.isoformat() if task.completed_at else None,
             'progress': _calculate_import_task_progress(task),
-            'total_items': task.total_links,
-            'processed_items': task.processed_links
+            'total_items': total_links,
+            'completed_items': processed_links,
+            'failed_items': 0
         })
 
     # Add ProcessingTasks
     for task in processing_tasks:
-        task_type = task.type if hasattr(task, 'type') else 'processing'
+        task_type = task.type if hasattr(task, 'type') and task.type else 'processing'
 
         if filter_type and filter_type != task_type:
             continue
+
+        # Get values with safe defaults
+        progress = task.progress if hasattr(task, 'progress') and task.progress is not None else 0
+        total_items = task.total_items if hasattr(task, 'total_items') and task.total_items is not None else 0
+        completed_items = task.completed_items if hasattr(task, 'completed_items') and task.completed_items is not None else 0
+
+        # Get failed_items with safe default
+        failed_items = task.failed_items if hasattr(task, 'failed_items') and task.failed_items is not None else 0
 
         combined.append({
             'id': task.id,
             'name': f"{task_type.title()} Task {task.id}",
             'type': task_type,
-            'status': task.status,
-            'created_at': task.created_at.isoformat() if task.created_at else None,
-            'started_at': task.started_at.isoformat() if task.started_at else None,
-            'completed_at': task.completed_at.isoformat() if task.completed_at else None,
-            'progress': task.progress if hasattr(task, 'progress') else 0,
-            'total_items': task.total_items if hasattr(task, 'total_items') else 0,
-            'processed_items': task.completed_items if hasattr(task, 'completed_items') else 0
+            'status': task.status if hasattr(task, 'status') else 'unknown',
+            'created_at': None,  # ProcessingTask doesn't have created_at
+            'started_at': task.started_at.isoformat() if hasattr(task, 'started_at') and task.started_at else None,
+            'completed_at': task.completed_at.isoformat() if hasattr(task, 'completed_at') and task.completed_at else None,
+            'progress': progress,
+            'total_items': total_items,
+            'completed_items': completed_items,
+            'failed_items': failed_items
         })
 
-    # Sort by created_at (newest first)
-    combined.sort(key=lambda x: x['created_at'] or '', reverse=True)
+    # Sort by the most recent date available (created_at, started_at, or completed_at)
+    def get_sort_date(task):
+        dates = [task.get('created_at'), task.get('started_at'), task.get('completed_at')]
+        # Filter out None values and return the most recent, or empty string if all None
+        valid_dates = [d for d in dates if d is not None]
+        return max(valid_dates) if valid_dates else ''
+
+    combined.sort(key=get_sort_date, reverse=True)
 
     return combined
 
@@ -411,7 +444,7 @@ def _format_task_details(task):
         'config': task.get('config'),
         'progress': task.get('progress'),
         'total_items': task.get('total_items') or task.get('total_links'),
-        'processed_items': task.get('processed_items') or task.get('processed_links'),
+        'completed_items': task.get('completed_items') or task.get('processed_items') or task.get('processed_links'),
         'failed_items': task.get('failed_items', 0),
         'created_at': task.get('created_at'),
         'started_at': task.get('started_at'),

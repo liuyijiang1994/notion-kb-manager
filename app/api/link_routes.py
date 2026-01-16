@@ -1,5 +1,6 @@
 """Link import and task management API routes"""
 from flask import Blueprint, request, jsonify
+from app import db
 from app.services.link_import_service import get_link_import_service
 from app.services.link_validation_service import get_link_validation_service
 from app.services.task_service import get_task_service
@@ -53,7 +54,7 @@ def import_from_favorites():
         )
 
         if not result['success']:
-            return error_response(result.get('error', 'Import failed'), 'IMP_001'), 400
+            return error_response('IMP_001', result.get('error', 'Import failed'), None, 400)
 
         # Update task if exists
         if task_id:
@@ -73,14 +74,15 @@ def import_from_favorites():
                 'duplicates': result['duplicates'],
                 'failed': result['failed']
             },
-            message=f"Imported {result['imported']} links from favorites"
-        ), 201
+            message=f"Imported {result['imported']} links from favorites",
+            status=201
+        )
 
     except ValueError as e:
-        return error_response(str(e), 'VAL_001'), 400
+        return error_response('VAL_001', str(e), None, 400)
     except Exception as e:
         logger.error(f"Favorites import failed: {e}", exc_info=True)
-        return error_response(f"Import failed: {str(e)}", 'SYS_001'), 500
+        return error_response('SYS_001', f"Import failed: {str(e)}", None, 500)
 
 
 @link_bp.route('/import/manual', methods=['POST'])
@@ -112,7 +114,7 @@ def import_manual():
         result = import_service.import_manual(text=text, task_id=task_id)
 
         if not result['success']:
-            return error_response(result.get('error', 'Import failed'), 'IMP_001'), 400
+            return error_response('IMP_001', result.get('error', 'Import failed'), None, 400)
 
         # Update task if exists
         if task_id:
@@ -131,14 +133,15 @@ def import_manual():
                 'imported': result['imported'],
                 'duplicates': result['duplicates']
             },
-            message=f"Imported {result['imported']} links manually"
-        ), 201
+            message=f"Imported {result['imported']} links manually",
+            status=201
+        )
 
     except ValueError as e:
-        return error_response(str(e), 'VAL_001'), 400
+        return error_response('VAL_001', str(e), None, 400)
     except Exception as e:
         logger.error(f"Manual import failed: {e}", exc_info=True)
-        return error_response(f"Import failed: {str(e)}", 'SYS_001'), 500
+        return error_response('SYS_001', f"Import failed: {str(e)}", None, 500)
 
 
 # ==================== Link Management Endpoints ====================
@@ -501,8 +504,9 @@ def create_import_task():
                 'status': task.status,
                 'created_at': task.created_at.isoformat()
             },
-            message="Import task created successfully"
-        ), 201
+            message="Import task created successfully",
+            status=201
+        )
 
     except ValueError as e:
         return error_response(str(e), 'VAL_001'), 400

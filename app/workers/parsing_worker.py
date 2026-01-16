@@ -18,17 +18,20 @@ def get_app() -> Flask:
     """Get or create Flask app for worker"""
     global app
     if app is None:
-        app = create_app()
+        import os
+        config_name = os.getenv('FLASK_ENV', 'development')
+        app = create_app(config_name)
     return app
 
 
-def parse_content_job(task_id: int, link_id: int):
+def parse_content_job(task_id: int, link_id: int, **kwargs):
     """
     Parse single link as background job
 
     Args:
         task_id: ProcessingTask ID
         link_id: Link ID to parse
+        **kwargs: Additional RQ parameters (ignored)
 
     Returns:
         Dict with parsing result
@@ -97,7 +100,7 @@ def parse_content_job(task_id: int, link_id: int):
             raise
 
 
-def batch_parse_job(task_id: int, link_ids: list):
+def batch_parse_job(task_id: int, link_ids: list, **kwargs):
     """
     Batch parse multiple links (dispatches individual jobs)
 
@@ -107,6 +110,7 @@ def batch_parse_job(task_id: int, link_ids: list):
     Args:
         task_id: ProcessingTask ID
         link_ids: List of link IDs to parse
+        **kwargs: Additional RQ parameters (ignored)
 
     Returns:
         Dict with batch dispatch result
@@ -134,9 +138,9 @@ def batch_parse_job(task_id: int, link_ids: list):
             # Enqueue individual parse job
             job = queue.enqueue(
                 'app.workers.parsing_worker.parse_content_job',
-                task_id=task_id,
-                link_id=link_id,
-                timeout=WorkerConfig.PARSING_TIMEOUT
+                task_id,
+                link_id,
+                job_timeout=WorkerConfig.PARSING_TIMEOUT
             )
 
             job_ids.append(job.id)

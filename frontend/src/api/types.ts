@@ -187,6 +187,7 @@ export interface Bookmark {
 export interface Config {
   notion_api_key?: string;
   openai_api_key?: string;
+  openai_base_url?: string;
   openai_model?: string;
   temperature?: number;
   max_tokens?: number;

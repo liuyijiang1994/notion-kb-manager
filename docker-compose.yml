@@ -27,6 +27,7 @@ services:
       - FLASK_ENV=production
       - DATABASE_URL=postgresql://kbuser:kbpass123@postgres:5432/notion_kb
       - REDIS_URL=redis://redis:6379/0
+      - REDIS_RATE_LIMIT_URL=redis://redis:6379/1
       - SECRET_KEY=dev-secret-key-change-in-production-min-32-chars
       - JWT_SECRET_KEY=dev-jwt-secret-change-in-production-min-32
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
@@ -54,8 +55,10 @@ services:
       dockerfile: Dockerfile.backend
     container_name: kb-worker-parsing
     environment:
+      - FLASK_ENV=production
       - DATABASE_URL=postgresql://kbuser:kbpass123@postgres:5432/notion_kb
       - REDIS_URL=redis://redis:6379/0
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
       - NOTION_API_KEY=${NOTION_API_KEY:-your-notion-api-key}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-api-key}
     depends_on:
@@ -75,8 +78,10 @@ services:
       dockerfile: Dockerfile.backend
     container_name: kb-worker-ai
     environment:
+      - FLASK_ENV=production
       - DATABASE_URL=postgresql://kbuser:kbpass123@postgres:5432/notion_kb
       - REDIS_URL=redis://redis:6379/0
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-api-key}
     depends_on:
       postgres:
@@ -95,8 +100,10 @@ services:
       dockerfile: Dockerfile.backend
     container_name: kb-worker-notion
     environment:
+      - FLASK_ENV=production
       - DATABASE_URL=postgresql://kbuser:kbpass123@postgres:5432/notion_kb
       - REDIS_URL=redis://redis:6379/0
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
       - NOTION_API_KEY=${NOTION_API_KEY:-your-notion-api-key}
     depends_on:
       postgres:

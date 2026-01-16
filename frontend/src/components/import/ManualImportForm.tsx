@@ -18,13 +18,14 @@ export const ManualImportForm = () => {
     mutationFn: async () => {
       const task = await importsApi.importSingleLink(url);
 
-      if (autoStart) {
-        await importsApi.startWorkflow(task.id, {
-          parse: true,
-          ai_process: true,
-          export_notion: true,
-        });
-      }
+      // TODO: Implement workflow start when backend endpoint is ready
+      // if (autoStart) {
+      //   await importsApi.startWorkflow(task.id, {
+      //     parse: true,
+      //     ai_process: true,
+      //     export_notion: true,
+      //   });
+      // }
 
       return task;
     },

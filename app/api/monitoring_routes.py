@@ -179,6 +179,7 @@ def get_statistics():
     try:
         from app.models.content import ProcessingTask
         from app.models.notion import ImportNotionTask
+        from app.models.link import ImportTask
         from app import db
 
         # Get ProcessingTask statistics
@@ -261,6 +262,40 @@ def get_statistics():
 
             stats['total_items_processed'] += task.completed_items
             stats['total_items_failed'] += task.failed_items
+
+        # Get ImportTask statistics
+        import_tasks = db.session.query(ImportTask).all()
+
+        for task in import_tasks:
+            task_type = 'import'
+            if task_type not in type_stats:
+                type_stats[task_type] = {
+                    'total': 0,
+                    'completed': 0,
+                    'failed': 0,
+                    'running': 0,
+                    'pending': 0
+                }
+
+            type_stats[task_type]['total'] += 1
+            stats['total_tasks'] += 1
+
+            if task.status == 'completed':
+                type_stats[task_type]['completed'] += 1
+                stats['completed_tasks'] += 1
+            elif task.status == 'failed':
+                type_stats[task_type]['failed'] += 1
+                stats['failed_tasks'] += 1
+            elif task.status in ('running', 'queued'):
+                type_stats[task_type]['running'] += 1
+                stats['running_tasks'] += 1
+            elif task.status == 'pending':
+                type_stats[task_type]['pending'] += 1
+                stats['pending_tasks'] += 1
+
+            # ImportTask uses processed_links instead of completed_items
+            processed = task.processed_links if task.processed_links else 0
+            stats['total_items_processed'] += processed
 
         stats['by_type'] = type_stats
 

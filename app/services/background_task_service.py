@@ -127,8 +127,7 @@ class BackgroundTaskService:
         job = queue.enqueue(
             job_func,
             *args,
-            **kwargs,
-            timeout=queue_config['timeout'],
+            job_timeout=queue_config['timeout'],
             result_ttl=queue_config['result_ttl'],
             retry=retry
         )

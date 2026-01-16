@@ -6,22 +6,35 @@ export const importsApi = {
    * Import a single URL
    */
   importSingleLink: async (url: string, metadata?: { title?: string; tags?: string[] }): Promise<ImportTask> => {
-    const response = await apiClient.post<never, ApiResponse<{ task: ImportTask }>>(
-      '/import/link',
-      { url, ...metadata }
+    const response = await apiClient.post<never, ApiResponse<{ task_id: number; total: number; imported: number }>>(
+      '/links/import/manual',
+      { text: url, task_name: 'Manual URL Import' }
     );
-    return response.data!.task;
+    return {
+      id: response.data!.task_id,
+      status: 'completed',
+      created_at: new Date().toISOString(),
+      total_links: response.data!.total,
+      processed_links: response.data!.imported,
+    };
   },
 
   /**
    * Import multiple URLs
    */
   importBatchLinks: async (urls: string[]): Promise<ImportTask> => {
-    const response = await apiClient.post<never, ApiResponse<{ task: ImportTask }>>(
-      '/import/links',
-      { urls }
+    const text = urls.join('\n');
+    const response = await apiClient.post<never, ApiResponse<{ task_id: number; total: number; imported: number }>>(
+      '/links/import/manual',
+      { text, task_name: 'Batch URL Import' }
     );
-    return response.data!.task;
+    return {
+      id: response.data!.task_id,
+      status: 'completed',
+      created_at: new Date().toISOString(),
+      total_links: response.data!.total,
+      processed_links: response.data!.imported,
+    };
   },
 
   /**
@@ -31,8 +44,8 @@ export const importsApi = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await apiClient.post<never, ApiResponse<{ task: ImportTask }>>(
-      '/import/bookmarks',
+    const response = await apiClient.post<never, ApiResponse<{ task_id: number; total: number; imported: number }>>(
+      '/links/import/favorites',
       formData,
       {
         headers: {
@@ -40,7 +53,13 @@ export const importsApi = {
         },
       }
     );
-    return response.data!.task;
+    return {
+      id: response.data!.task_id,
+      status: 'completed',
+      created_at: new Date().toISOString(),
+      total_links: response.data!.total,
+      processed_links: response.data!.imported,
+    };
   },
 
   /**
